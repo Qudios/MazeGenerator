@@ -94,15 +94,17 @@ local function GetNeighbourCoords(self : Maze, Coord : string) -- Gets all the n
 	return NeighbourCells
 end
 
-local function ChangeCellDirection(self : Maze, Coord : string, Direction : string) --
+--[[ So to visual represent they maze, I save the maze state in a table using a Direction variable to show which direction it opens too, then I loop through all the cells in the table and update their state
+this ChangeCellDirection is responsible in making those pyhsical changes to cell like opening up walls]]--
+local function ChangeCellDirection(self : Maze, Coord : string, Direction : string) 
 	local Cell = self.MazeFolder:FindFirstChild(Coord)
 	if Direction == "E" then
 		Cell.East.Transparency = 1
 		Cell.East.CanCollide = false
 		local CoordTable = CoordToTable(Coord)	
-		local NextCell = self.MazeFolder:FindFirstChild((CoordTable.x + 1)..","..CoordTable.z)
+		local NextCell = self.MazeFolder:FindFirstChild((CoordTable.x + 1)..","..CoordTable.z) -- So earlier on met a problem where they wall will still be their realised that I have to also remove the neighbour opposite walls
 		if not NextCell then print(CoordTable) end
-		NextCell.West.Transparency = 1
+		NextCell.West.Transparency = 1 -- Opposite of East being West
 		NextCell.West.CanCollide = false
 	elseif Direction == "W" then
 		Cell.West.Transparency = 1
@@ -128,26 +130,26 @@ local function ChangeCellDirection(self : Maze, Coord : string, Direction : stri
 		if not NextCell then print(CoordTable) end
 		NextCell.South.Transparency = 1
 		NextCell.South.CanCollide = false
-	elseif Direction == "I" then
+	elseif Direction == "I" then -- Later on I added a direction called "I" meaning Ignore as it used to just set a directionless cell to origin even tho it wasn't meant to, which didn't work for other algorithms that didin't have a default direction like origin shift
 		return
 	else
 		ChangeToOrigin(Cell)
 	end
 end
 
-local function UpdateCell(self : Maze, Coord : string, Direction : string)
+local function UpdateCell(self : Maze, Coord : string, Direction : string) -- Deals with updating the cell and neighbour cells
 	local Cell = self.MazeFolder:FindFirstChild(Coord)
 	local NeighbourCells = GetNeighbourCells(self, Coord)
 	ChangeCellDirection(self, Coord, Direction)
 	
-	if NeighbourCells.North and self.Cells[NeighbourCells.North.Name].Direction == "S" then ChangeCellDirection(self, Coord, "N") end
+	if NeighbourCells.North and self.Cells[NeighbourCells.North.Name].Direction == "S" then ChangeCellDirection(self, Coord, "N") end -- It updates the neighbour cells in relation to the cell, tbh this was only useful for origin shift.
 	if NeighbourCells.East and self.Cells[NeighbourCells.East.Name].Direction == "W" then ChangeCellDirection(self, Coord, "E")  end
 	if NeighbourCells.West and self.Cells[NeighbourCells.West.Name].Direction == "E" then ChangeCellDirection(self, Coord, "W") end
 	if NeighbourCells.South and self.Cells[NeighbourCells.South.Name].Direction == "N" then ChangeCellDirection(self, Coord, "S") end
 	
 end
 
-local function UpdateMazeWithCells(self : Maze, Cells : {string : Cell})
+local function UpdateMazeWithCells(self : Maze, Cells : {string : Cell}) -- Loop that updates the maze
 	local MazeFolder = self.MazeFolder
 	
 	for Coord, Cell in Cells do
@@ -155,43 +157,44 @@ local function UpdateMazeWithCells(self : Maze, Cells : {string : Cell})
 	end
 end
 
-local function RandomPossibleDirection(self : Maze, Coord : string)
+local function RandomPossibleDirection(self : Maze, Coord : string) -- Gets a random possible direction, so any direction that isn't out of bounds.
 	local PossibleNeighbours = {}
 
 	local CoordTable = CoordToTable(Coord)
 
-	if self.MazeFolder:FindFirstChild(CoordTable.x..","..(CoordTable.z - 1)) then table.insert(PossibleNeighbours, "N") end
+	if self.MazeFolder:FindFirstChild(CoordTable.x..","..(CoordTable.z - 1)) then table.insert(PossibleNeighbours, "N") end -- adds to a table
 	if self.MazeFolder:FindFirstChild((CoordTable.x + 1)..","..CoordTable.z) then table.insert(PossibleNeighbours, "E") end
 	if self.MazeFolder:FindFirstChild(CoordTable.x..","..(CoordTable.z + 1)) then table.insert(PossibleNeighbours, "S") end
 	if self.MazeFolder:FindFirstChild((CoordTable.x - 1)..","..CoordTable.z) then table.insert(PossibleNeighbours, "W") end
 
-	local RandomDirection = PossibleNeighbours[math.random(1, table.maxn(PossibleNeighbours))]
+	local RandomDirection = PossibleNeighbours[math.random(1, table.maxn(PossibleNeighbours))] -- get a random number between 1 and the amount of items in the table, then uses that as an index.
 
 	return RandomDirection
 end
 
-local function RandomPossibleNotVisitedDirection(self : Maze, Coord : string)
+local function RandomPossibleNotVisitedDirection(self : Maze, Coord : string) -- Gets a RandomPossible Direction, but filters out the ones that are already visited.
 	local PossibleNeighbours = {}
 
 	local CoordTable = CoordToTable(Coord)
 
+	--[[Checks whether it is in NonvisitedCells table and if so insert, if not then skip. I could have also used self.Nodes[CoordTable.x..","..(CoordTable.z - 1)].Visited instead tbh that would be faster instead
+	of searching through a table, promise I would change it]]-- 
 	if self.MazeFolder:FindFirstChild(CoordTable.x..","..(CoordTable.z - 1)) and table.find(self.NonVisitedCells, CoordTable.x..","..(CoordTable.z - 1)) then table.insert(PossibleNeighbours, "N") end
 	if self.MazeFolder:FindFirstChild((CoordTable.x + 1)..","..CoordTable.z) and table.find(self.NonVisitedCells, (CoordTable.x + 1)..","..CoordTable.z) then table.insert(PossibleNeighbours, "E") end
 	if self.MazeFolder:FindFirstChild(CoordTable.x..","..(CoordTable.z + 1)) and table.find(self.NonVisitedCells, CoordTable.x..","..(CoordTable.z + 1)) then table.insert(PossibleNeighbours, "S") end
 	if self.MazeFolder:FindFirstChild((CoordTable.x - 1)..","..CoordTable.z) and table.find(self.NonVisitedCells, (CoordTable.x - 1)..","..CoordTable.z) then table.insert(PossibleNeighbours, "W") end
-
+	
 	local Size = table.maxn(PossibleNeighbours)
-	if Size < 1 then return end
+	if Size < 1 then return end -- Possible for all surrounding neighbours to be visited, so it returns nil this is used in the wilson algorithm I believe.
 	
 	local RandomDirection = PossibleNeighbours[math.random(1, Size)]
 
 	return RandomDirection
 end
 
-local function GetCellFromDirection(self : Maze, Coord : string, Direction : string)
+local function GetCellFromDirection(self : Maze, Coord : string, Direction : string) -- Returns the Neighbour Coords with their direction as indexes in a table.
 	local NeighbourCells = {}
 	
-	local MazeFolder = self.MazeFolder
 	local CoordTable = CoordToTable(Coord)
 
 	NeighbourCells.N = CoordTable.x..","..(CoordTable.z - 1)
@@ -202,13 +205,16 @@ local function GetCellFromDirection(self : Maze, Coord : string, Direction : str
 	return NeighbourCells[Direction]
 end
 
-local function CoordToCell(self : Maze, Coord : string)
+local function CoordToCell(self : Maze, Coord : string) -- Gets the physical Cell Model reference from a Coordinate ex. ("1,2")
 	return self.MazeFolder:FindFirstChild(Coord)
 end
 
 --[=[
 	Gets Coords of a Random Not Visited Cell
+	was testing roblox function descirption
 ]=]
+ --[[So code was much smaller than this but had a week long problem that stopped the wilson algorithm from working just to realise that this function was returning visited cells for some reason.
+]]--
 local function GetRandomNotVisitedCell(self : Maze)
 	while #self.NonVisitedCells > 0 do
 		local index = math.random(1, #self.NonVisitedCells)
