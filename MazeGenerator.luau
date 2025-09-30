@@ -214,8 +214,10 @@ end
 	was testing roblox function descirption
 ]=]
  --[[So code was much smaller than this but had a week long problem that stopped the wilson algorithm from working just to realise that this function was returning visited cells for some reason.
-]]--
+It used the roblox search feature, and tracked down every instance of adding to nonvisited table and still couldn't figure out why it would be in the nonvisited table and .Visited would be true.]]--
 local function GetRandomNotVisitedCell(self : Maze)
+	--[[Does a loop until it finds a nonvisited Cell that also has .visited as false and removed any that don't, fixing the problem, after doing this the wilson algorithm I gave up on actually worked, 
+		they amount of time I spent debugging it was more than coding pratically all the algorithms]]--
 	while #self.NonVisitedCells > 0 do
 		local index = math.random(1, #self.NonVisitedCells)
 		local cell = self.NonVisitedCells[index]
@@ -239,47 +241,45 @@ end
 local function SetCellToVisited(self : Maze, Cell : string)
 	self.Cells[Cell].Visited = true
 	table.remove(self.NonVisitedCells, table.find(self.NonVisitedCells, Cell))
-	--self.MazeFolder:FindFirstChild(Cell).Middle.Transparency = 1
+	--self.MazeFolder:FindFirstChild(Cell).Middle.Transparency = 1 was used for visual feedback now I just use colors instead of empty
 end
 
 local function SetCellToNotVisited(self : Maze, Cell : string)
 	self.Cells[Cell].Visited = false
 	self.Cells[Cell].Direction = "O"
 	table.insert(self.NonVisitedCells, Cell)
-	ChangeCellFloorColor(self, Cell, Color3.new(1, 0, 0))
+	ChangeCellFloorColor(self, Cell, Color3.new(1, 0, 0)) -- Visual feedback
 	self.MazeFolder:FindFirstChild(Cell).Middle.Transparency = 0
 end
 
-local function EraseLoop(self : Maze, Cell : string, Walk : {string}) : {string?}
+local function EraseLoop(self : Maze, Cell : string, Walk : {string}) : {string?} -- For Wilson algorithm, it erases any loops.
 	local Index = table.find(Walk, Cell)
-	if not Index then return Walk end
-	if #Walk == 1 then return Walk end
+	if not Index then return Walk end -- if for some reason, they cell which is supposed to be in the walk is not there then return walk without modifications.
+	if #Walk == 1 then return Walk end -- If the cell is the only one in walk for some reason then just return the walk.
 	
-	for i = #Walk, #Walk - Index, -1 do
-		if i < 2 then break end
+	for i = #Walk, #Walk - Index, -1 do -- This loop took a lot of testing, but it goes from the bottom of the table to right before the index, to delete all items after the index.
+		if i < 2 then break end -- this is useless since I already check earlier on, hmmmm.
 		SetCellToNotVisited(self, Walk[i])
 		Walk[i] = nil
 	end
-	
+	-- Practically if during the walk u find another cell that is already inside the walk then a loop has occured so just delete all cells after that cell to erase it.
 	return Walk
 end
 
-local function GetDirectionBetweenCells(self : Maze, Cell1string : string, Cell2string : string)
+local function GetDirectionBetweenCells(self : Maze, Cell1string : string, Cell2string : string) -- Gets Like what direction a cell is relative to the other cell.
 	local Cell1 = CoordToTable(Cell1string)
 	local Cell2 = CoordToTable(Cell2string)
 	
-	--print(Cell1, Cell2)
-	
-	if tonumber(Cell2.x) > tonumber(Cell1.x) then return "E" end
-	if tonumber(Cell2.x) < tonumber(Cell1.x) then return "W" end
-	if tonumber(Cell2.z) < tonumber(Cell1.z) then return "N" end
-	if tonumber(Cell2.z) > tonumber(Cell1.z) then return "S" else print("o") end
+	if tonumber(Cell2.x) > tonumber(Cell1.x) then return "E" end -- So if Cell2 has a greater x, it means that it is East of Cell1
+	if tonumber(Cell2.x) < tonumber(Cell1.x) then return "W" end 
+	if tonumber(Cell2.z) < tonumber(Cell1.z) then return "N" end -- So if Cell2 has a lesser z, it means that it is North of Cell1
+	if tonumber(Cell2.z) > tonumber(Cell1.z) then return "S" end
 end
 
-function MazeGenerator.Create(OriginPosition : Vector3, GridSize : number) : Maze
+function MazeGenerator.Create(OriginPosition : Vector3, GridSize : number) : Maze -- Init Function of the Maze, that creates the Maze object in OOP terms.
 	local Maze : Maze = {OriginPosition = OriginPosition, GridSize = GridSize}
 	
-	local MazeFolder = game:GetService("Workspace").Maze
+	local MazeFolder = game:GetService("Workspace").Maze -- Would add the ability to have more than one maze at a time.
 	
 	local OriginX = OriginPosition.X
 	local OriginZ = OriginPosition.Z
@@ -287,7 +287,7 @@ function MazeGenerator.Create(OriginPosition : Vector3, GridSize : number) : Maz
 	Cell.Floor.Color = FloorColor
 	ChangeWallColor(Cell, WallColor)
 	
-	for x = 0, GridSize do
+	for x = 0, GridSize do -- Simple Grid Loop, for every z coord on the x axis it Clones the Prefab Maze Cell Model, then offset it according to the coords, names it the coords and parents to the MazeFolder.
 		for z = 0, GridSize	do
 			local NewCell : Model = Cell:Clone()
 			local NewCFrame : CFrame = CFrame.new(OriginX + (CellSize * x), 5, OriginZ + (CellSize * z))
@@ -299,7 +299,7 @@ function MazeGenerator.Create(OriginPosition : Vector3, GridSize : number) : Maz
 	
 	Maze.MazeFolder = MazeFolder
 	
-	return setmetatable(Maze, MazeGenerator)
+	return setmetatable(Maze, MazeGenerator) -- OOP things
 end
 
 function MazeGenerator.GetOriginPosition(self : Maze)
@@ -307,7 +307,7 @@ function MazeGenerator.GetOriginPosition(self : Maze)
 end
 
 
-function MazeGenerator.OriginShift(self : Maze, Iterations : number, UpdateInterval : number?)
+function MazeGenerator.OriginShift(self : Maze, Iterations : number, UpdateInterval : number?) -- Origin Shift Algorithm, first one I coded.
 	local Cells = {} :: {string : Cell}
 	
 	for x = 0, self.GridSize do
