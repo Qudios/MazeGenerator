@@ -308,9 +308,9 @@ end
 
 
 function MazeGenerator.OriginShift(self : Maze, Iterations : number, UpdateInterval : number?) -- Origin Shift Algorithm, first one I coded.
-	local Cells = {} :: {string : Cell}
+	local Cells = {} :: {string : Cell} -- Table of all Cells including their direction and whether they are visited, which I would store in self later
 	
-	for x = 0, self.GridSize do
+	for x = 0, self.GridSize do -- Simple Grid Looping
 		for z = 0, self.GridSize do
 			if x ~= self.GridSize then
 				Cells[x..","..z] = {Direction = "E", Visited = false}
@@ -319,36 +319,37 @@ function MazeGenerator.OriginShift(self : Maze, Iterations : number, UpdateInter
 			end
 		end
 	end
+	 -- Set all cells that aren't on the final row to E and they ones on the final row south, this makes it a perfect maze at default, as origin maze just keep it perfect in every iteration while changing.
+
+	Cells[self.GridSize..","..self.GridSize].Direction = "O" -- Sets the Final cell as the origin Node.
+	self.OriginCell = self.GridSize..","..self.GridSize -- kinda redundant but makes it easier.
 	
-	Cells[self.GridSize..","..self.GridSize].Direction = "O"
-	self.OriginCell = self.GridSize..","..self.GridSize
+	self.Cells = Cells -- store the cells to self.
 	
-	self.Cells = Cells
-	
-	local CurrentIteration = 0
+	local CurrentIteration = 0 -- used in seperating visual updates later on. 
 	if not UpdateInterval then UpdateInterval = 1 end
 	
 	UpdateMazeWithCells(self, Cells)
 	
 	while CurrentIteration < Iterations do		
 		local NewDirection = RandomPossibleDirection(self, self.OriginCell)
-		Cells[self.OriginCell].Direction = NewDirection
-		ChangeCellDirection(self, self.OriginCell, NewDirection)
-		self.MazeFolder[self.OriginCell].Middle.Transparency = 1
+		Cells[self.OriginCell].Direction = NewDirection -- We set the new direction
+		ChangeCellDirection(self, self.OriginCell, NewDirection) -- Redundant, most likely because I hadn't code the visual updater by this time or I am stupid.
+		self.MazeFolder[self.OriginCell].Middle.Transparency = 1 -- shows that it has been visited just for visuals
 		
 		local NewOriginCell = GetCellFromDirection(self, self.OriginCell, NewDirection)
-		Cells[NewOriginCell].Direction = "O"
-		self.OriginCell = NewOriginCell
+		Cells[NewOriginCell].Direction = "O" -- It gets the new cell that is in that direction and it becomes the new origin node
+		self.OriginCell = NewOriginCell 
 		ChangeCellDirection(self, self.OriginCell, "O")
 		
 		CurrentIteration += 1
-		if CurrentIteration % 100 == UpdateInterval then
+		if CurrentIteration % UpdateInterval == 0 then -- If CurrentIteration can be divided without remainder then it has passed the interval for it to be updated
 			UpdateMazeWithCells(self, Cells)
 			task.wait()
 		end
 	end
 	
-	UpdateMazeWithCells(self, Cells)
+	UpdateMazeWithCells(self, Cells) -- final update incase update interval isn't a factor of iterations.
 end
 
 function MazeGenerator.AldrousBroder(self : Maze, UpdateInterval : number?)
