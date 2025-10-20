@@ -511,7 +511,7 @@ end
 function MazeGenerator.Prism(self : Maze) -- Decided this one cause it looks caller and needs a different approach compared to others
 	local Cells = {} :: {string : Cell}
 	local NonVisitedCells = {} :: {string}
-	local VisitedCells = {} :: {string} -- Visited Cells required this time instead of using not table.find(NonVisitedCells, Cell)
+	local VisitedCells = {} :: {string} -- Visited Cells required this time instead of using not table.find(NonVisitedCells, Cell), also used as a queue before the are actually finalized.
 
 	for x = 0, self.GridSize do
 		for z = 0, self.GridSize do
@@ -533,27 +533,29 @@ function MazeGenerator.Prism(self : Maze) -- Decided this one cause it looks cal
 
 	local FinishedCell = 0
 
-	while self.NonVisitedCells[1] or FinishedCell >= self.GridSize ^ 2 do
-		if #VisitedCells < 1 then break end
+	 -- 2 fail safes, had a counter so once all cells got a direction it stops or either no more visitedcells which are more of a queue in this func.
+	while #VisitedCells < 1 or FinishedCell >= self.GridSize ^ 2 do
 		local RandomVisitedCell = VisitedCells[math.random(1, #VisitedCells)]
-		local RandomNotVisitedDir = RandomPossibleNotVisitedDirection(self, RandomVisitedCell)
+		local RandomNotVisitedDir = RandomPossibleNotVisitedDirection(self, RandomVisitedCell) -- gets a random direction that hasn't been visited.
 
+		-- If all the cell neighbours are visited then we finalize the cell, that's why the algorithm expands from the middle.
 		if not RandomNotVisitedDir then 
+			-- Finalizing the cell
 			self.Cells[RandomVisitedCell].Visited = true
 
 			ChangeCellFloorColor(self, RandomVisitedCell, Color3.new(0, 0, 1))
 			self.MazeFolder:FindFirstChild(RandomVisitedCell).Middle.Transparency = 0
 
 			table.remove(VisitedCells, table.find(VisitedCells, RandomVisitedCell))
-			FinishedCell += 1
+			FinishedCell += 1 
 			continue
 		end
 
+		-- if it does have one we open the wall between them.
 		self.Cells[RandomVisitedCell].Direction = RandomNotVisitedDir
 
+		-- Get the neighbour, visually show it is visited then insery the neighbour in visited/queue and remove from nonvisited
 		local NeighbourCell = GetCellFromDirection(self, RandomVisitedCell, RandomNotVisitedDir)
-		if not NeighbourCell then print(RandomVisitedCell, RandomNotVisitedDir) end
-
 		self.MazeFolder:FindFirstChild(NeighbourCell).Middle.Transparency = 0
 		ChangeCellFloorColor(self, NeighbourCell, Color3.new(0, 1, 0))
 
@@ -566,87 +568,91 @@ function MazeGenerator.Prism(self : Maze) -- Decided this one cause it looks cal
 	UpdateMazeWithCells(self, self.Cells)
 end
 
-local function CalculateHcost(self : Maze, Start : string, Goal : string)
-	local D = 10
+local function CalculateHcost(self : Maze, Start : string, Goal : string) -- Returns the distance between the Cell and the Goal, multiply by 10 to remove decimals
 	local Distance = (self.MazeFolder:FindFirstChild(Start):GetPivot().Position - self.MazeFolder:FindFirstChild(Goal):GetPivot().Position).Magnitude
-	local HeuristicDistance = Distance * D
+	local HeuristicDistance = Distance * 10
 	return HeuristicDistance
 end
 
-local function IsTraversable(self : Maze, Cell : string, Destination : string, Direction : string) : boolean
+local function IsTraversable(self : Maze, Cell : string, Destination : string, Direction : string) : boolean -- Checks whether their is a wall blocking two cells
 	local CellDir = self.Cells[Cell].Direction
 	local CellModel = self.MazeFolder:FindFirstChild(Cell)
 	local DestinationDir = self.Cells[Destination].Direction
 	local DestinationModel = self.MazeFolder:FindFirstChild(Destination)
 
+	-- so if the direction the cell is pointing to is the same as the direction of the next cell then it is traversable, Cell pointing north can transverse the north Cell.
 	if CellDir == AbbreviateDir(Direction) then return true end
-	if OppositeDirection(DestinationDir) == AbbreviateDir(Direction) then return true end
-	if CellModel[Direction].Transparency == 1 and DestinationModel[UnAbbreviateDir(OppositeDirection(AbbreviateDir(Direction)))].Transparency == 1 then return true end 
 
+	-- if the opposite of the cell that it wants to traverse to is equals to the direction it wants to traverse to, it is traversable.
+	if OppositeDirection(DestinationDir) == AbbreviateDir(Direction) then return true end
+
+	--final check if the wall is transparent between both a.k.a their is no wall, then it is traversable, instead of using only this thought it would be less intensive to compare strings first, i could be wrong.
+	if CellModel[Direction].Transparency == 1 and DestinationModel[UnAbbreviateDir(OppositeDirection(AbbreviateDir(Direction)))].Transparency == 1 then return true end 
+	
 	return
 end
 
 local function GetPath(self : Maze, CellInfo : {[string] : AStarCellInfo}, Cell : string) 
-	local Distance = 80
+	local Distance = 80 -- when I add customizable CellSize, it would be CellSize * 10
 	local Current : AStarCellInfo = CellInfo[Cell]
 	local Path = {}
 	local TotalDistance = 0
-	while Current.Origin do
-		TotalDistance += Distance
-		if table.find(Path, Current.Origin) then break end
+	while Current.Origin do -- it retraces it path as per the A* algorithm until it is back at the first node which doesn't have an origin.
+		if table.find(Path, Current.Origin) then break end -- if we somehow loop then break end
+		TotalDistance += Distance -- adds distance to calculate distance cost since it can't move diagonal all the posisble distances are exactly the same.
 		table.insert(Path, Current.Origin)
 		Current = CellInfo[Current.Origin]
 	end
 
-	return {Path = Path, Distance = TotalDistance}
+	return {Path = Path, Distance = TotalDistance} -- returns the path and total distance for comparison
 end
 
-local function CalculateGcost(self : Maze, CellInfo : {[string] : AStarCellInfo}, Cell : string)
+local function CalculateGcost(self : Maze, CellInfo : {[string] : AStarCellInfo}, Cell : string) -- Gets total distance from the first cell to the cell.
 	return GetPath(self, CellInfo, Cell).Distance
 end
 
 local function CalculateFcost(self : Maze, CellInfo : {[string] : AStarCellInfo}, Cell : string, Goal : string)
 	local Gcost = CalculateGcost(self, CellInfo, Cell)
 	local Hcost = CalculateHcost(self, Cell, Goal)
-	--print(Gcost, Hcost)
 	return Gcost + Hcost
 end
 
 local function GetLowestFcost(self : Maze, CellInfo : {[string] : AStarCellInfo})
 	local LowestNumber = nil
-	local CurrentLowest = {}
+	local CurrentLowest = {} -- Possibility of more than one lowest fcost sharing the same amount which we filter out later on.
 
 	for Coord, Info in CellInfo do
 		if not Info.Fcost then continue end
-		if Info.Closed then continue end
+		if Info.Closed then continue end -- if it has been closed then it isn't a possible path forward.
 
-		if not LowestNumber then 
-			LowestNumber = Info.Fcost 
+		if not LowestNumber then -- for the beginning, couldn't preset as it could have been closed.
+			LowestNumber = Info.Fcost
 			CurrentLowest = { Coord }  
 			continue 
 		end
 
-		if Info.Fcost < LowestNumber then 
-			CurrentLowest = { Coord } 
+		if Info.Fcost < LowestNumber then -- if cell fcost is lower then it is the new lowestnumber
+			CurrentLowest = { Coord } -- if it is the new lowest then reset table with only it.
 		elseif Info.Fcost == LowestNumber then
-			table.insert(CurrentLowest, Coord)
+			table.insert(CurrentLowest, Coord) -- if it is equal to the lowest add to table.
 		end
 	end
 
-	local LowestHcost = CellInfo[CurrentLowest[1]].Hcost
+	-- the lowest Fcost chosen would be the one with the least Hcost, it is also impossible to share hcost so only one possible solution.
+	local LowestHcost = CellInfo[CurrentLowest[1]].Hcost -- preset lowest hcost as all cells have an hcost and the closed ones have already been filtered out earlier.
 	local LowestCoord = CurrentLowest[1]
 
-	for _, Coord in CurrentLowest do
+	for _, Coord in CurrentLowest do -- loop and set the lowestcoord to the one that is lesser than all hcosts in the loop.
 		if CellInfo[Coord].Hcost < LowestHcost then LowestCoord = Coord end
 	end
 
 	return LowestCoord
 end
 
-local function UpdatePathWithCells(self : Maze, CellInfo : {[string] : AStarCellInfo})
+local function UpdatePathWithCells(self : Maze, CellInfo : {[string] : AStarCellInfo}) -- Required it owns visualizing to show the path.
 	local MazeFolder = self.MazeFolder
 
-	for Coord, Cell in CellInfo do
+	for Coord, Cell in CellInfo do -- set the color depending on its status.
 		self.MazeFolder:FindFirstChild(Coord).Middle.Transparency = 0
 		if Cell.Start then ChangeCellFloorColor(self, Coord, Color3.new(1,1,1)) continue end
 		if Cell.Goal then ChangeCellFloorColor(self, Coord, Color3.new(0)) continue end
@@ -658,34 +664,35 @@ end
 
 function MazeGenerator.SolveWithAStar(self : Maze, Start : string, Goal : string, UpdateInterval : number?)
 	local Cells = {} :: {string : Cell}
-	local CellInfo = {} :: {[string] : AStarCellInfo}
+	local CellInfo = {} :: {[string] : AStarCellInfo} -- store all info of the cells required in the algorithm.
 
 	local Iter = 0
 	for Cell, Info in self.Cells do
-		CellInfo[Cell] = {Closed = false, PathDistance = 565}
+		CellInfo[Cell] = {Closed = false, PathDistance = 565} -- default
 	end
 
-
+	 -- initializing the starting cell and final/goal cell.
 	CellInfo[Start] = {Fcost = CalculateHcost(self, Start, Goal), Hcost = CalculateHcost(self, Start, Goal), Gcost = CalculateGcost(self, CellInfo, Start), Closed = false, Start = true}
 	CellInfo[Goal] = {Closed = false, PathDistance = 565, Goal = true}
 	local Current = Start
 	if not UpdateInterval then UpdateInterval = 1 end
 
-	while Current ~= Goal do
+	while Current ~= Goal do -- until the Goal is reached it runs.
 		Current = GetLowestFcost(self, CellInfo)
 		CellInfo[Current].Closed = true
-		local NeighbourCells = GetNeighbourCoords(self, Current)
+		local NeighbourCells = GetNeighbourCoords(self, Current) -- gets all neighbours, the west, north, east and south, returns as [Direction] = coords, ["East"] = "0,1".
 
-		for Direction, Coord in NeighbourCells do		
-			if not IsTraversable(self, Current, Coord, Direction) or CellInfo[Coord].Closed then continue end
+		for Direction, Coord in NeighbourCells do -- so sets index to direction and value to Coord.
 			if CellInfo[Coord].Start then continue end
+			if not IsTraversable(self, Current, Coord, Direction) or CellInfo[Coord].Closed then continue end -- if it can't be traversed or is closed we move on.
 
-			if GetPath(self, CellInfo, Coord).Distance < CellInfo[Coord].PathDistance or not CellInfo[Coord].Closed then 
+			 -- if not closed it calculates the values and sets the origin to the current cell else if path is smaller that its old one even though it is closed we recalculate the values.
+			if GetPath(self, CellInfo, Coord).Distance < CellInfo[Coord].PathDistance or not CellInfo[Coord].Closed then
 				CellInfo[Coord].Fcost = CalculateFcost(self, CellInfo, Coord, Goal)
 				CellInfo[Coord].Gcost = CalculateGcost(self, CellInfo, Coord)
 				CellInfo[Coord].Hcost = CalculateHcost(self, Coord, Goal)
 				CellInfo[Coord].Origin = Current
-				if CellInfo[Coord].Closed then CellInfo[Coord].Closed = false end
+				if CellInfo[Coord].Closed then CellInfo[Coord].Closed = false end -- We Open it up again.
 			end
 
 			Iter += 1
@@ -696,13 +703,13 @@ function MazeGenerator.SolveWithAStar(self : Maze, Start : string, Goal : string
 		end
 	end
 
-	UpdatePathWithCells(self, CellInfo)
+	UpdatePathWithCells(self, CellInfo) -- Show the final product
 
-	for _, Coord in GetPath(self, CellInfo, Current).Path do
+	for _, Coord in GetPath(self, CellInfo, Current).Path do -- Set all to Blue on the path
 		ChangeCellFloorColor(self, Coord, Color3.new(0, 0, 1))
 	end
-	ChangeCellFloorColor(self, Start, Color3.new(1, 1, 1))
-	ChangeCellFloorColor(self, Goal, Color3.new(0, 0, 0))
+	ChangeCellFloorColor(self, Start, Color3.new(1, 1, 1)) -- but set start to white
+	ChangeCellFloorColor(self, Goal, Color3.new(0, 0, 0)) -- but set goal to black
 
 end
 
