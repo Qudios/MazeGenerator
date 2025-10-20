@@ -386,7 +386,7 @@ function MazeGenerator.AldrousBroder(self : Maze, UpdateInterval : number?) -- A
 
 	for x = 0, self.GridSize do
 		for z = 0, self.GridSize do
-			Cells[x..","..z] = {Direction = "O", Visited = false}
+			Cells[x..","..z] = {Direction = "O", Visited = false} 
 			table.insert(NonVisitedCells, x..","..z)
 		end
 	end
@@ -399,17 +399,20 @@ function MazeGenerator.AldrousBroder(self : Maze, UpdateInterval : number?) -- A
 	local CurrentCell = GetRandomNotVisitedCell(self)
 	if not UpdateInterval then UpdateInterval = 1 end
 
-	while self.NonVisitedCells[1] do
+	while self.NonVisitedCells[1] do -- until all cells have been visited and given a direction.
+		-- Get a random neighbouring Cell by getting a possible direction and then getting the cell from the direction, a later on create a function that does this.
 		local RandomDirection = RandomPossibleDirection(self, CurrentCell)
 		local NeighbourCell = GetCellFromDirection(self, CurrentCell, RandomDirection)
 
+		-- So the algorithm connects the cells together randomly, so if not visited it would connect them by setting the direction to the opposite thus connecting the cells.
+		
 		if not self.Cells[NeighbourCell].Visited then
 			self.Cells[NeighbourCell].Direction = OppositeDirection(RandomDirection)
 			SetCellToVisited(self, NeighbourCell)
 		end
 
 		CurrentCell = NeighbourCell
-
+		
 		CurrentIteration += 1
 		if CurrentIteration % 100 == UpdateInterval then
 			UpdateMazeWithCells(self, Cells)
@@ -438,37 +441,38 @@ function MazeGenerator.Wilson(self : Maze, UpdateInterval : number?)
 	if not UpdateInterval then UpdateInterval = 1 end
 
 	UpdateMazeWithCells(self, Cells)
-	local Destination = GetRandomNotVisitedCell(self)
+	local Destination = GetRandomNotVisitedCell(self) -- Wilson is a walk algorithm, so you select a nonvisted cell and randomly work till you find a visited one, so I need to get a visited cell to start.
 	SetCellToVisited(self, Destination)
 
 	while self.NonVisitedCells[1] do
 		local NeighbourCell
 		local CurrentCell = GetRandomNotVisitedCell(self)
+
+		 -- randomerror that happened once, doesn't make sense cause if nonvisted is not empty then currencell should not be nil, might have fixed the error and just kept it incase.
 		if not CurrentCell then break end
 
 		local walk = { CurrentCell }
-
 		repeat
-			CurrentCell = walk[#walk]
+			CurrentCell = walk[#walk] -- CurrentCell is at the end of the walk to continue the walk.
 			local RandomDirection = RandomPossibleDirection(self, CurrentCell, walk)
 			local NeighbourCell = GetCellFromDirection(self, CurrentCell, RandomDirection)
-
-			if not table.find(walk, NeighbourCell) then
+			
+			if not table.find(walk, NeighbourCell) then -- if not in walk then we just add it to the walk and change floor color for visuals.
 				walk[#walk + 1] = NeighbourCell
 				ChangeCellFloorColor(self, NeighbourCell, Color3.new(0, 1, 0))
-			elseif table.find(walk, NeighbourCell) then
+			elseif table.find(walk, NeighbourCell) then -- if it is already in walk then a loop has occured and we call the eraseloop function to deal with it.
 				walk = EraseLoop(self, NeighbourCell, walk)
 			end
 
 			CurrentIteration += 1
-		until self.Cells[NeighbourCell].Visited
+		until self.Cells[NeighbourCell].Visited -- if it is a visited cell then we have finished the walk.
 
-		for i, Cell in walk do
+		for i, Cell in walk do -- We now connect the walk, finalizing it.
 			SetCellToVisited(self, Cell)
 			ChangeCellFloorColor(self, Cell, Color3.new(0, 0, 1))
-			if not walk[i+1] then continue end
+			if not walk[i+1] then continue end -- the final cell doesn't have another cell to connect with.
 
-			self.Cells[Cell].Direction = GetDirectionBetweenCells(self, Cell, walk[i+1])
+			self.Cells[Cell].Direction = GetDirectionBetweenCells(self, Cell, walk[i+1]) -- we set the direction to the one that would face them together thus connecting them.
 			self.Cells[walk[i+1]].Direction = GetDirectionBetweenCells(self, walk[i+1], Cell)
 		end
 
@@ -478,36 +482,36 @@ function MazeGenerator.Wilson(self : Maze, UpdateInterval : number?)
 		end
 	end
 
-	for Coord, Info in self.Cells do
+	for Coord, Info in self.Cells do -- just clears the previous colors to visually show it has finished.
 		self.MazeFolder:FindFirstChild(Coord).Middle.Transparency = 0
 		ChangeCellFloorColor(self, Coord, Color3.new(0, 0, 1))
 	end
 
 end
 
-function MazeGenerator.BinaryTree(self : Maze)
+function MazeGenerator.BinaryTree(self : Maze) -- very simple algorithm
 	local Cells = {} :: {string : Cell}
-	local RandomDirection = {"S", "W"}
+	local RandomDirection = {"S", "W"} -- Algorithm states to set to either South or West
 
 	for x = 0, self.GridSize do
 		for z = 0, self.GridSize do
-			local Dir = RandomDirection[math.random(1, 2)]
-			if x == 0 then Dir = "S" end
-			if z == 10 then Dir = "W" end
-			if x == 0 and z == 10 then Dir = "I" end
+			local Dir = RandomDirection[math.random(1, 2)] -- gets a random number between 1 and 2 puts it as index to get either S or W.
+			if x == 0 then Dir = "S" end -- It can't open West if x = 0 as it is at the max west.
+			if z == self.GridSize then Dir = "W" end -- It can't open South if z = gridsize as it at the bottom
+			if x == 0 and z == self.GridSize then Dir = "I" end -- can't open either ways so we just ignore it.
 			Cells[x..","..z] = {Direction = Dir, Visited = true}
 		end
 	end
 
 	self.Cells = Cells
 
-	UpdateMazeWithCells(self, Cells)
+	UpdateMazeWithCells(self, Cells) -- update it
 end
 
-function MazeGenerator.Prism(self : Maze)
+function MazeGenerator.Prism(self : Maze) -- Decided this one cause it looks caller and needs a different approach compared to others
 	local Cells = {} :: {string : Cell}
 	local NonVisitedCells = {} :: {string}
-	local VisitedCells = {} :: {string}
+	local VisitedCells = {} :: {string} -- Visited Cells required this time instead of using not table.find(NonVisitedCells, Cell)
 
 	for x = 0, self.GridSize do
 		for z = 0, self.GridSize do
@@ -525,7 +529,7 @@ function MazeGenerator.Prism(self : Maze)
 
 	local CurrentCell = GetRandomNotVisitedCell(self)
 	table.insert(VisitedCells, CurrentCell)
-	self.MazeFolder:FindFirstChild(CurrentCell).Middle.Transparency = 1
+	self.MazeFolder:FindFirstChild(CurrentCell).Middle.Transparency = 1 -- Visually show it has been visited
 
 	local FinishedCell = 0
 
