@@ -63,15 +63,15 @@ end --  I just realised I should have converted tonumber(), this why --!strict i
 
 local function GetNeighbourCells(self : Maze, Coord : string) -- Gets all the reference of a Cell's neighbour in the maze folder that holds all physical cells.
 	local NeighbourCells = {}
-	
+
 	local MazeFolder = self.MazeFolder
 	local CoordTable = CoordToTable(Coord)
-	
+
 	NeighbourCells.North = MazeFolder:FindFirstChild(CoordTable.x..","..(CoordTable.z - 1)) -- The Z-Axis is Vertical from 0 - Gridsize, so z-axis - 1 would be above the Cell being North.
 	NeighbourCells.East = MazeFolder:FindFirstChild((CoordTable.x + 1)..","..CoordTable.z) -- The X-Axis is Horizontal from 0 - Gridsize, so x-axis + 1 would be "infront" of the cell to the East.
 	NeighbourCells.South = MazeFolder:FindFirstChild(CoordTable.x..","..(CoordTable.z + 1))
 	NeighbourCells.West = MazeFolder:FindFirstChild((CoordTable.x - 1)..","..CoordTable.z)
-	
+
 	return NeighbourCells
 end
 
@@ -85,12 +85,12 @@ local function GetNeighbourCoords(self : Maze, Coord : string) -- Gets all the n
 	NeighbourCells.East = (CoordTable.x + 1)..","..CoordTable.z
 	NeighbourCells.South = CoordTable.x..","..(CoordTable.z + 1)
 	NeighbourCells.West = (CoordTable.x - 1)..","..CoordTable.z
-	
+
 	if CoordTable.z - 1 < 0 then NeighbourCells.North = nil end -- Can't be less than zero so it doesn't exist
 	if CoordTable.z + 1 > self.GridSize then NeighbourCells.South = nil end -- Can't be more than the Gridsize do it doesn't exist
 	if CoordTable.x - 1 < 0 then NeighbourCells.West = nil end 
 	if CoordTable.x + 1 > self.GridSize then NeighbourCells.East = nil end
-	
+
 	return NeighbourCells
 end
 
@@ -141,17 +141,17 @@ local function UpdateCell(self : Maze, Coord : string, Direction : string) -- De
 	local Cell = self.MazeFolder:FindFirstChild(Coord)
 	local NeighbourCells = GetNeighbourCells(self, Coord)
 	ChangeCellDirection(self, Coord, Direction)
-	
+
 	if NeighbourCells.North and self.Cells[NeighbourCells.North.Name].Direction == "S" then ChangeCellDirection(self, Coord, "N") end -- It updates the neighbour cells in relation to the cell, tbh this was only useful for origin shift.
 	if NeighbourCells.East and self.Cells[NeighbourCells.East.Name].Direction == "W" then ChangeCellDirection(self, Coord, "E")  end
 	if NeighbourCells.West and self.Cells[NeighbourCells.West.Name].Direction == "E" then ChangeCellDirection(self, Coord, "W") end
 	if NeighbourCells.South and self.Cells[NeighbourCells.South.Name].Direction == "N" then ChangeCellDirection(self, Coord, "S") end
-	
+
 end
 
 local function UpdateMazeWithCells(self : Maze, Cells : {string : Cell}) -- Loop that updates the maze
 	local MazeFolder = self.MazeFolder
-	
+
 	for Coord, Cell in Cells do
 		UpdateCell(self, Coord, Cell.Direction)
 	end
@@ -183,10 +183,10 @@ local function RandomPossibleNotVisitedDirection(self : Maze, Coord : string) --
 	if self.MazeFolder:FindFirstChild((CoordTable.x + 1)..","..CoordTable.z) and table.find(self.NonVisitedCells, (CoordTable.x + 1)..","..CoordTable.z) then table.insert(PossibleNeighbours, "E") end
 	if self.MazeFolder:FindFirstChild(CoordTable.x..","..(CoordTable.z + 1)) and table.find(self.NonVisitedCells, CoordTable.x..","..(CoordTable.z + 1)) then table.insert(PossibleNeighbours, "S") end
 	if self.MazeFolder:FindFirstChild((CoordTable.x - 1)..","..CoordTable.z) and table.find(self.NonVisitedCells, (CoordTable.x - 1)..","..CoordTable.z) then table.insert(PossibleNeighbours, "W") end
-	
+
 	local Size = table.maxn(PossibleNeighbours)
 	if Size < 1 then return end -- Possible for all surrounding neighbours to be visited, so it returns nil this is used in the wilson algorithm I believe.
-	
+
 	local RandomDirection = PossibleNeighbours[math.random(1, Size)]
 
 	return RandomDirection
@@ -194,7 +194,7 @@ end
 
 local function GetCellFromDirection(self : Maze, Coord : string, Direction : string) -- Returns the Neighbour Coords with their direction as indexes in a table.
 	local NeighbourCells = {}
-	
+
 	local CoordTable = CoordToTable(Coord)
 
 	NeighbourCells.N = CoordTable.x..","..(CoordTable.z - 1)
@@ -256,7 +256,7 @@ local function EraseLoop(self : Maze, Cell : string, Walk : {string}) : {string?
 	local Index = table.find(Walk, Cell)
 	if not Index then return Walk end -- if for some reason, they cell which is supposed to be in the walk is not there then return walk without modifications.
 	if #Walk == 1 then return Walk end -- If the cell is the only one in walk for some reason then just return the walk.
-	
+
 	for i = #Walk, #Walk - Index, -1 do -- This loop took a lot of testing, but it goes from the bottom of the table to right before the index, to delete all items after the index.
 		if i < 2 then break end -- this is useless since I already check earlier on, hmmmm.
 		SetCellToNotVisited(self, Walk[i])
@@ -269,7 +269,7 @@ end
 local function GetDirectionBetweenCells(self : Maze, Cell1string : string, Cell2string : string) -- Gets Like what direction a cell is relative to the other cell.
 	local Cell1 = CoordToTable(Cell1string)
 	local Cell2 = CoordToTable(Cell2string)
-	
+
 	if tonumber(Cell2.x) > tonumber(Cell1.x) then return "E" end -- So if Cell2 has a greater x, it means that it is East of Cell1
 	if tonumber(Cell2.x) < tonumber(Cell1.x) then return "W" end 
 	if tonumber(Cell2.z) < tonumber(Cell1.z) then return "N" end -- So if Cell2 has a lesser z, it means that it is North of Cell1
@@ -278,15 +278,15 @@ end
 
 function MazeGenerator.Create(OriginPosition : Vector3, GridSize : number) : Maze -- Init Function of the Maze, that creates the Maze object in OOP terms.
 	local Maze : Maze = {OriginPosition = OriginPosition, GridSize = GridSize}
-	
+
 	local MazeFolder = game:GetService("Workspace").Maze -- Would add the ability to have more than one maze at a time.
-	
+
 	local OriginX = OriginPosition.X
 	local OriginZ = OriginPosition.Z
-	
+
 	Cell.Floor.Color = FloorColor
 	ChangeWallColor(Cell, WallColor)
-	
+
 	for x = 0, GridSize do -- Simple Grid Loop, for every z coord on the x axis it Clones the Prefab Maze Cell Model, then offset it according to the coords, names it the coords and parents to the MazeFolder.
 		for z = 0, GridSize	do
 			local NewCell : Model = Cell:Clone()
@@ -296,10 +296,33 @@ function MazeGenerator.Create(OriginPosition : Vector3, GridSize : number) : Maz
 			NewCell.Parent = MazeFolder
 		end
 	end
-	
+
 	Maze.MazeFolder = MazeFolder
-	
+
 	return setmetatable(Maze, MazeGenerator) -- OOP things
+end
+
+function MazeGenerator.Reset(self : Maze)
+	for _, child in self.MazeFolder:GetChildren() do
+		child:Destroy()
+	end
+	
+	local NewMaze = MazeGenerator.Create(self.OriginPosition, self.GridSize)
+	self = nil
+	return NewMaze 
+end
+
+function MazeGenerator.Generate(Algorithm : string, Maze : Maze?)
+	local NewMaze
+	if not Maze then
+		NewMaze = MazeGenerator.Create(Vector3.zero, 10)
+	else
+		NewMaze = MazeGenerator.Reset(Maze)
+	end
+	print(Algorithm)
+	MazeGenerator[Algorithm](NewMaze)
+	
+	return NewMaze
 end
 
 function MazeGenerator.GetOriginPosition(self : Maze)
@@ -309,7 +332,7 @@ end
 
 function MazeGenerator.OriginShift(self : Maze, Iterations : number, UpdateInterval : number?) -- Origin Shift Algorithm, first one I coded.
 	local Cells = {} :: {string : Cell} -- Table of all Cells including their direction and whether they are visited, which I would store in self later
-	
+
 	for x = 0, self.GridSize do -- Simple Grid Looping
 		for z = 0, self.GridSize do
 			if x ~= self.GridSize then
@@ -319,36 +342,37 @@ function MazeGenerator.OriginShift(self : Maze, Iterations : number, UpdateInter
 			end
 		end
 	end
-	 -- Set all cells that aren't on the final row to E and they ones on the final row south, this makes it a perfect maze at default, as origin maze just keep it perfect in every iteration while changing.
+	-- Set all cells that aren't on the final row to E and they ones on the final row south, this makes it a perfect maze at default, as origin maze just keep it perfect in every iteration while changing.
 
 	Cells[self.GridSize..","..self.GridSize].Direction = "O" -- Sets the Final cell as the origin Node.
 	self.OriginCell = self.GridSize..","..self.GridSize -- kinda redundant but makes it easier.
-	
+
 	self.Cells = Cells -- store the cells to self.
-	
+
 	local CurrentIteration = 0 -- used in seperating visual updates later on. 
+	if not Iterations then Iterations = self.GridSize^3 end
 	if not UpdateInterval then UpdateInterval = 1 end
-	
+
 	UpdateMazeWithCells(self, Cells)
-	
+
 	while CurrentIteration < Iterations do		
 		local NewDirection = RandomPossibleDirection(self, self.OriginCell)
 		Cells[self.OriginCell].Direction = NewDirection -- We set the new direction
 		ChangeCellDirection(self, self.OriginCell, NewDirection) -- Redundant, most likely because I hadn't code the visual updater by this time or I am stupid.
 		self.MazeFolder[self.OriginCell].Middle.Transparency = 1 -- shows that it has been visited just for visuals
-		
+
 		local NewOriginCell = GetCellFromDirection(self, self.OriginCell, NewDirection)
 		Cells[NewOriginCell].Direction = "O" -- It gets the new cell that is in that direction and it becomes the new origin node
 		self.OriginCell = NewOriginCell 
 		ChangeCellDirection(self, self.OriginCell, "O")
-		
+
 		CurrentIteration += 1
 		if CurrentIteration % UpdateInterval == 0 then -- If CurrentIteration can be divided without remainder then it has passed the interval for it to be updated
 			UpdateMazeWithCells(self, Cells)
 			task.wait()
 		end
 	end
-	
+
 	UpdateMazeWithCells(self, Cells) -- final update incase update interval isn't a factor of iterations.
 end
 
@@ -362,33 +386,33 @@ function MazeGenerator.AldrousBroder(self : Maze, UpdateInterval : number?)
 			table.insert(NonVisitedCells, x..","..z)
 		end
 	end
-	
+
 	self.Cells = Cells
 	self.NonVisitedCells = NonVisitedCells
-	
+
 	local CurrentIteration = 0
 	UpdateMazeWithCells(self, Cells)
 	local CurrentCell = GetRandomNotVisitedCell(self)
 	if not UpdateInterval then UpdateInterval = 1 end
-	
+
 	while self.NonVisitedCells[1] do
 		local RandomDirection = RandomPossibleDirection(self, CurrentCell)
 		local NeighbourCell = GetCellFromDirection(self, CurrentCell, RandomDirection)
-		
+
 		if not self.Cells[NeighbourCell].Visited then
 			self.Cells[NeighbourCell].Direction = OppositeDirection(RandomDirection)
 			SetCellToVisited(self, NeighbourCell)
 		end
-		
+
 		CurrentCell = NeighbourCell
-		
+
 		CurrentIteration += 1
 		if CurrentIteration % 100 == UpdateInterval then
 			UpdateMazeWithCells(self, Cells)
 			task.wait()
 		end
 	end
-	
+
 	UpdateMazeWithCells(self, Cells)
 end
 
@@ -408,59 +432,59 @@ function MazeGenerator.Wilson(self : Maze, UpdateInterval : number?)
 
 	local CurrentIteration = 0
 	if not UpdateInterval then UpdateInterval = 1 end
-	
+
 	UpdateMazeWithCells(self, Cells)
 	local Destination = GetRandomNotVisitedCell(self)
 	SetCellToVisited(self, Destination)
-	
+
 	while self.NonVisitedCells[1] do
 		local NeighbourCell
 		local CurrentCell = GetRandomNotVisitedCell(self)
 		if not CurrentCell then break end
-		
+
 		local walk = { CurrentCell }
-		
+
 		repeat
 			CurrentCell = walk[#walk]
 			local RandomDirection = RandomPossibleDirection(self, CurrentCell, walk)
 			local NeighbourCell = GetCellFromDirection(self, CurrentCell, RandomDirection)
-			
+
 			if not table.find(walk, NeighbourCell) then
 				walk[#walk + 1] = NeighbourCell
 				ChangeCellFloorColor(self, NeighbourCell, Color3.new(0, 1, 0))
 			elseif table.find(walk, NeighbourCell) then
 				walk = EraseLoop(self, NeighbourCell, walk)
 			end
-			
+
 			CurrentIteration += 1
 		until self.Cells[NeighbourCell].Visited
-		
+
 		for i, Cell in walk do
 			SetCellToVisited(self, Cell)
 			ChangeCellFloorColor(self, Cell, Color3.new(0, 0, 1))
 			if not walk[i+1] then continue end
-			
+
 			self.Cells[Cell].Direction = GetDirectionBetweenCells(self, Cell, walk[i+1])
 			self.Cells[walk[i+1]].Direction = GetDirectionBetweenCells(self, walk[i+1], Cell)
 		end
-		
+
 		if CurrentIteration % UpdateInterval == 0 then
 			UpdateMazeWithCells(self, self.Cells)
 			task.wait()
 		end
 	end
-	
+
 	for Coord, Info in self.Cells do
 		self.MazeFolder:FindFirstChild(Coord).Middle.Transparency = 0
 		ChangeCellFloorColor(self, Coord, Color3.new(0, 0, 1))
 	end
-	
+
 end
 
 function MazeGenerator.BinaryTree(self : Maze)
 	local Cells = {} :: {string : Cell}
 	local RandomDirection = {"S", "W"}
-	
+
 	for x = 0, self.GridSize do
 		for z = 0, self.GridSize do
 			local Dir = RandomDirection[math.random(1, 2)]
@@ -470,9 +494,9 @@ function MazeGenerator.BinaryTree(self : Maze)
 			Cells[x..","..z] = {Direction = Dir, Visited = true}
 		end
 	end
-	
+
 	self.Cells = Cells
-	
+
 	UpdateMazeWithCells(self, Cells)
 end
 
@@ -480,7 +504,7 @@ function MazeGenerator.Prism(self : Maze)
 	local Cells = {} :: {string : Cell}
 	local NonVisitedCells = {} :: {string}
 	local VisitedCells = {} :: {string}
-	
+
 	for x = 0, self.GridSize do
 		for z = 0, self.GridSize do
 			Cells[x..","..z] = {Direction = "I", Visited = false}
@@ -490,44 +514,44 @@ function MazeGenerator.Prism(self : Maze)
 
 	self.Cells = Cells
 	self.NonVisitedCells = NonVisitedCells
-	
+
 	local CurrentIteration = 0
-	
+
 	UpdateMazeWithCells(self, Cells)
-	
+
 	local CurrentCell = GetRandomNotVisitedCell(self)
 	table.insert(VisitedCells, CurrentCell)
 	self.MazeFolder:FindFirstChild(CurrentCell).Middle.Transparency = 1
-	
+
 	local FinishedCell = 0
-	
+
 	while self.NonVisitedCells[1] or FinishedCell >= self.GridSize ^ 2 do
 		if #VisitedCells < 1 then break end
 		local RandomVisitedCell = VisitedCells[math.random(1, #VisitedCells)]
 		local RandomNotVisitedDir = RandomPossibleNotVisitedDirection(self, RandomVisitedCell)
-		
+
 		if not RandomNotVisitedDir then 
 			self.Cells[RandomVisitedCell].Visited = true
-			
+
 			ChangeCellFloorColor(self, RandomVisitedCell, Color3.new(0, 0, 1))
 			self.MazeFolder:FindFirstChild(RandomVisitedCell).Middle.Transparency = 0
-			
+
 			table.remove(VisitedCells, table.find(VisitedCells, RandomVisitedCell))
 			FinishedCell += 1
 			continue
 		end
-		
+
 		self.Cells[RandomVisitedCell].Direction = RandomNotVisitedDir
-		
+
 		local NeighbourCell = GetCellFromDirection(self, RandomVisitedCell, RandomNotVisitedDir)
 		if not NeighbourCell then print(RandomVisitedCell, RandomNotVisitedDir) end
-		
+
 		self.MazeFolder:FindFirstChild(NeighbourCell).Middle.Transparency = 0
 		ChangeCellFloorColor(self, NeighbourCell, Color3.new(0, 1, 0))
-		
+
 		table.insert(VisitedCells, NeighbourCell)
 		table.remove(NonVisitedCells, table.find(NonVisitedCells, NeighbourCell))
-		
+
 		UpdateMazeWithCells(self, self.Cells)
 		task.wait()
 	end
@@ -546,11 +570,11 @@ local function IsTraversable(self : Maze, Cell : string, Destination : string, D
 	local CellModel = self.MazeFolder:FindFirstChild(Cell)
 	local DestinationDir = self.Cells[Destination].Direction
 	local DestinationModel = self.MazeFolder:FindFirstChild(Destination)
-	
+
 	if CellDir == AbbreviateDir(Direction) then return true end
 	if OppositeDirection(DestinationDir) == AbbreviateDir(Direction) then return true end
 	if CellModel[Direction].Transparency == 1 and DestinationModel[UnAbbreviateDir(OppositeDirection(AbbreviateDir(Direction)))].Transparency == 1 then return true end 
-	
+
 	return
 end
 
@@ -565,7 +589,7 @@ local function GetPath(self : Maze, CellInfo : {[string] : AStarCellInfo}, Cell 
 		table.insert(Path, Current.Origin)
 		Current = CellInfo[Current.Origin]
 	end
-	
+
 	return {Path = Path, Distance = TotalDistance}
 end
 
@@ -587,13 +611,13 @@ local function GetLowestFcost(self : Maze, CellInfo : {[string] : AStarCellInfo}
 	for Coord, Info in CellInfo do
 		if not Info.Fcost then continue end
 		if Info.Closed then continue end
-		
+
 		if not LowestNumber then 
 			LowestNumber = Info.Fcost 
 			CurrentLowest = { Coord }  
 			continue 
 		end
-		
+
 		if Info.Fcost < LowestNumber then 
 			CurrentLowest = { Coord } 
 		elseif Info.Fcost == LowestNumber then
@@ -603,11 +627,11 @@ local function GetLowestFcost(self : Maze, CellInfo : {[string] : AStarCellInfo}
 
 	local LowestHcost = CellInfo[CurrentLowest[1]].Hcost
 	local LowestCoord = CurrentLowest[1]
-	
+
 	for _, Coord in CurrentLowest do
 		if CellInfo[Coord].Hcost < LowestHcost then LowestCoord = Coord end
 	end
-	
+
 	return LowestCoord
 end
 
@@ -619,7 +643,7 @@ local function UpdatePathWithCells(self : Maze, CellInfo : {[string] : AStarCell
 		if Cell.Start then ChangeCellFloorColor(self, Coord, Color3.new(1,1,1)) continue end
 		if Cell.Goal then ChangeCellFloorColor(self, Coord, Color3.new(0)) continue end
 		if Cell.Closed then ChangeCellFloorColor(self, Coord, Color3.new(1, 0, 0)) continue end
-		
+
 		ChangeCellFloorColor(self, Coord, Color3.new(0, 1, 0))
 	end
 end
@@ -627,18 +651,18 @@ end
 function MazeGenerator.SolveWithAStar(self : Maze, Start : string, Goal : string, UpdateInterval : number?)
 	local Cells = {} :: {string : Cell}
 	local CellInfo = {} :: {[string] : AStarCellInfo}
-	
+
 	local Iter = 0
 	for Cell, Info in self.Cells do
 		CellInfo[Cell] = {Closed = false, PathDistance = 565}
 	end
-	
-	
+
+
 	CellInfo[Start] = {Fcost = CalculateHcost(self, Start, Goal), Hcost = CalculateHcost(self, Start, Goal), Gcost = CalculateGcost(self, CellInfo, Start), Closed = false, Start = true}
 	CellInfo[Goal] = {Closed = false, PathDistance = 565, Goal = true}
 	local Current = Start
 	if not UpdateInterval then UpdateInterval = 1 end
-	
+
 	while Current ~= Goal do
 		Current = GetLowestFcost(self, CellInfo)
 		CellInfo[Current].Closed = true
@@ -647,7 +671,7 @@ function MazeGenerator.SolveWithAStar(self : Maze, Start : string, Goal : string
 		for Direction, Coord in NeighbourCells do		
 			if not IsTraversable(self, Current, Coord, Direction) or CellInfo[Coord].Closed then continue end
 			if CellInfo[Coord].Start then continue end
-			
+
 			if GetPath(self, CellInfo, Coord).Distance < CellInfo[Coord].PathDistance or not CellInfo[Coord].Closed then 
 				CellInfo[Coord].Fcost = CalculateFcost(self, CellInfo, Coord, Goal)
 				CellInfo[Coord].Gcost = CalculateGcost(self, CellInfo, Coord)
@@ -655,7 +679,7 @@ function MazeGenerator.SolveWithAStar(self : Maze, Start : string, Goal : string
 				CellInfo[Coord].Origin = Current
 				if CellInfo[Coord].Closed then CellInfo[Coord].Closed = false end
 			end
-			
+
 			Iter += 1
 			if Iter % UpdateInterval == 0 then
 				UpdatePathWithCells(self, CellInfo)
@@ -663,15 +687,15 @@ function MazeGenerator.SolveWithAStar(self : Maze, Start : string, Goal : string
 			end
 		end
 	end
-	
+
 	UpdatePathWithCells(self, CellInfo)
-	
+
 	for _, Coord in GetPath(self, CellInfo, Current).Path do
 		ChangeCellFloorColor(self, Coord, Color3.new(0, 0, 1))
 	end
 	ChangeCellFloorColor(self, Start, Color3.new(1, 1, 1))
 	ChangeCellFloorColor(self, Goal, Color3.new(0, 0, 0))
-	
+
 end
 
 return MazeGenerator
