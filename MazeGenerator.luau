@@ -302,24 +302,28 @@ function MazeGenerator.Create(OriginPosition : Vector3, GridSize : number) : Maz
 	return setmetatable(Maze, MazeGenerator) -- OOP things
 end
 
-function MazeGenerator.Reset(self : Maze)
+function MazeGenerator.Reset(self : Maze) -- Added this so that you can actually test the maze for the application, so when you click the generate button it resets the maze for the next generation.
+	-- Have to clear the folder storing all the cells.
 	for _, child in self.MazeFolder:GetChildren() do
 		child:Destroy()
 	end
-	
+
+	 -- set previous to nil then return brand new maze
 	local NewMaze = MazeGenerator.Create(self.OriginPosition, self.GridSize)
 	self = nil
 	return NewMaze 
 end
 
-function MazeGenerator.Generate(Algorithm : string, Maze : Maze?)
+function MazeGenerator.Generate(Algorithm : string, Maze : Maze?) -- This is connected to the generate button on the client
+	-- So I just named the algorithm buttons to their respective function names and send their names as an argument.
 	local NewMaze
+	-- If it is the first Generation it just creates a new maze, else it resets the maze
 	if not Maze then
 		NewMaze = MazeGenerator.Create(Vector3.zero, 10)
 	else
 		NewMaze = MazeGenerator.Reset(Maze)
 	end
-	print(Algorithm)
+
 	MazeGenerator[Algorithm](NewMaze)
 	
 	return NewMaze
@@ -376,9 +380,9 @@ function MazeGenerator.OriginShift(self : Maze, Iterations : number, UpdateInter
 	UpdateMazeWithCells(self, Cells) -- final update incase update interval isn't a factor of iterations.
 end
 
-function MazeGenerator.AldrousBroder(self : Maze, UpdateInterval : number?)
-	local Cells = {} :: {string : Cell}
-	local NonVisitedCells = {} :: {string}
+function MazeGenerator.AldrousBroder(self : Maze, UpdateInterval : number?) -- Another Algorithm, different approach to Originshift
+	local Cells = {} :: {string : Cell} 
+	local NonVisitedCells = {} :: {string} -- easier way to find cells that aren't visited instead of looping through cells and checking whehter they have visited as false.
 
 	for x = 0, self.GridSize do
 		for z = 0, self.GridSize do
