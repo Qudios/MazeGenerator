@@ -30,6 +30,7 @@ end
 
 local function UnAbbreviateDir(Direction : string) -- Opposite of the top,
 	local Dirs = {["N"] = "North", ["W"] = "West", ["S"] = "South", ["E"] = "East"}
+	if not Dirs[Direction] then return false end
 	return Dirs[Direction]
 end
 
@@ -60,6 +61,13 @@ local function CoordToTable(Coord : string) : {x : number, z : number} -- Turns 
 	local CoordTable = {x = Split[1], z = Split[2]}
 	return CoordTable
 end --  I just realised I should have converted tonumber(), this why --!strict is useful, this caused me errors later on cause it was a string
+
+local function OppositeDirection(Direction : string)
+	if Direction == "N" then return "S" end
+	if Direction == "S" then return "N" end
+	if Direction == "E" then return "W" end
+	if Direction == "W" then return "E" end
+end
 
 local function GetNeighbourCells(self : Maze, Coord : string) -- Gets all the reference of a Cell's neighbour in the maze folder that holds all physical cells.
 	local NeighbourCells = {}
@@ -94,44 +102,36 @@ local function GetNeighbourCoords(self : Maze, Coord : string) -- Gets all the n
 	return NeighbourCells
 end
 
+local function GetCellFromDirection(self : Maze, Coord : string, Direction : string) -- Returns the Neighbour Coords with their direction as indexes in a table.
+	local NeighbourCells = {}
+
+	local CoordTable = CoordToTable(Coord)
+
+	NeighbourCells.N = CoordTable.x..","..(CoordTable.z - 1)
+	NeighbourCells.E = (CoordTable.x + 1)..","..CoordTable.z
+	NeighbourCells.S = CoordTable.x..","..(CoordTable.z + 1)
+	NeighbourCells.W = (CoordTable.x - 1)..","..CoordTable.z
+
+	return NeighbourCells[Direction]
+end
+
 --[[ So to visual represent they maze, I save the maze state in a table using a Direction variable to show which direction it opens too, then I loop through all the cells in the table and update their state
 this ChangeCellDirection is responsible in making those pyhsical changes to cell like opening up walls]]--
 local function ChangeCellDirection(self : Maze, Coord : string, Direction : string) 
 	local Cell = self.MazeFolder:FindFirstChild(Coord)
-	if Direction == "E" then
-		Cell.East.Transparency = 1
-		Cell.East.CanCollide = false
-		local CoordTable = CoordToTable(Coord)	
-		local NextCell = self.MazeFolder:FindFirstChild((CoordTable.x + 1)..","..CoordTable.z) -- So earlier on met a problem where they wall will still be their realised that I have to also remove the neighbour opposite walls
-		if not NextCell then print(CoordTable) end
-		NextCell.West.Transparency = 1 -- Opposite of East being West
-		NextCell.West.CanCollide = false
-	elseif Direction == "W" then
-		Cell.West.Transparency = 1
-		Cell.West.CanCollide = false
-		local CoordTable = CoordToTable(Coord)
-		local NextCell = self.MazeFolder:FindFirstChild((CoordTable.x - 1)..","..CoordTable.z)
-		if not NextCell then print(CoordTable) end
-		NextCell.East.Transparency = 1
-		NextCell.East.CanCollide = false
-	elseif Direction == "S" then
-		Cell.South.Transparency = 1
-		Cell.South.CanCollide = false
-		local CoordTable = CoordToTable(Coord)	
-		local NextCell = self.MazeFolder:FindFirstChild(CoordTable.x..","..(CoordTable.z + 1))
-		if not NextCell then print(CoordTable) end
-		NextCell.North.Transparency = 1
-		NextCell.North.CanCollide = false
-	elseif Direction == "N" then
-		Cell.North.Transparency = 1
-		Cell.North.CanCollide = false
-		local CoordTable = CoordToTable(Coord)
-		local NextCell = self.MazeFolder:FindFirstChild(CoordTable.x..","..(CoordTable.z - 1))
-		if not NextCell then print(CoordTable) end
-		NextCell.South.Transparency = 1
-		NextCell.South.CanCollide = false
-	elseif Direction == "I" then -- Later on I added a direction called "I" meaning Ignore as it used to just set a directionless cell to origin even tho it wasn't meant to, which didn't work for other algorithms that didin't have a default direction like origin shift
+	
+	if Direction == "I" then -- Later on I added a direction called "I" meaning Ignore as it used to just set a directionless cell to origin even tho it wasn't meant to, which didn't work for other algorithms that didin't have a default direction like origin shift
 		return
+	elseif UnAbbreviateDir(Direction) then
+		Direction = UnAbbreviateDir(Direction)
+		Cell[Direction].Transparency = 1
+		Cell[Direction].CanCollide = 1
+		
+		local CoordTable = CoordToTable(Coord)
+		-- So earlier on met a problem where they wall will still be their realised that I have to also remove the neighbour opposite walls
+		local NextCell = self.MazeFolder:FindFirstChild(GetCellFromDirection(self, Coord, AbbreviateDir(Direction)))
+		NextCell[UnAbbreviateDir(OppositeDirection(AbbreviateDir(Direction)))].Transparency = 1 -- Opposite of East being West
+		NextCell[UnAbbreviateDir(OppositeDirection(AbbreviateDir(Direction)))].CanCollide = false
 	else
 		ChangeToOrigin(Cell)
 	end
@@ -141,12 +141,8 @@ local function UpdateCell(self : Maze, Coord : string, Direction : string) -- De
 	local Cell = self.MazeFolder:FindFirstChild(Coord)
 	local NeighbourCells = GetNeighbourCells(self, Coord)
 	ChangeCellDirection(self, Coord, Direction)
-
-	if NeighbourCells.North and self.Cells[NeighbourCells.North.Name].Direction == "S" then ChangeCellDirection(self, Coord, "N") end -- It updates the neighbour cells in relation to the cell, tbh this was only useful for origin shift.
-	if NeighbourCells.East and self.Cells[NeighbourCells.East.Name].Direction == "W" then ChangeCellDirection(self, Coord, "E")  end
-	if NeighbourCells.West and self.Cells[NeighbourCells.West.Name].Direction == "E" then ChangeCellDirection(self, Coord, "W") end
-	if NeighbourCells.South and self.Cells[NeighbourCells.South.Name].Direction == "N" then ChangeCellDirection(self, Coord, "S") end
-
+	
+	if NeighbourCells[UnAbbreviateDir(Direction)] and self.Cells[NeighbourCells[UnAbbreviateDir(Direction)]] == OppositeDirection(Direction) then ChangeCellDirection(self, Coord, Direction) end
 end
 
 local function UpdateMazeWithCells(self : Maze, Cells : {string : Cell}) -- Loop that updates the maze
@@ -192,19 +188,6 @@ local function RandomPossibleNotVisitedDirection(self : Maze, Coord : string) --
 	return RandomDirection
 end
 
-local function GetCellFromDirection(self : Maze, Coord : string, Direction : string) -- Returns the Neighbour Coords with their direction as indexes in a table.
-	local NeighbourCells = {}
-
-	local CoordTable = CoordToTable(Coord)
-
-	NeighbourCells.N = CoordTable.x..","..(CoordTable.z - 1)
-	NeighbourCells.E = (CoordTable.x + 1)..","..CoordTable.z
-	NeighbourCells.S = CoordTable.x..","..(CoordTable.z + 1)
-	NeighbourCells.W = (CoordTable.x - 1)..","..CoordTable.z
-
-	return NeighbourCells[Direction]
-end
-
 local function CoordToCell(self : Maze, Coord : string) -- Gets the physical Cell Model reference from a Coordinate ex. ("1,2")
 	return self.MazeFolder:FindFirstChild(Coord)
 end
@@ -229,13 +212,6 @@ local function GetRandomNotVisitedCell(self : Maze)
 		end
 	end
 	return
-end
-
-local function OppositeDirection(Direction : string)
-	if Direction == "N" then return "S" end
-	if Direction == "S" then return "N" end
-	if Direction == "E" then return "W" end
-	if Direction == "W" then return "E" end
 end
 
 local function SetCellToVisited(self : Maze, Cell : string)
