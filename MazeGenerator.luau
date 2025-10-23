@@ -308,7 +308,7 @@ function MazeGenerator.Reset(self : Maze) -- Added this so that you can actually
 		child:Destroy()
 	end
 
-	 -- set previous to nil then return brand new maze
+	-- set previous to nil then return brand new maze
 	local NewMaze = MazeGenerator.Create(self.OriginPosition, self.GridSize)
 	self = nil
 	return NewMaze 
@@ -325,7 +325,7 @@ function MazeGenerator.Generate(Algorithm : string, Maze : Maze?) -- This is con
 	end
 
 	MazeGenerator[Algorithm](NewMaze)
-	
+
 	return NewMaze
 end
 
@@ -405,14 +405,14 @@ function MazeGenerator.AldrousBroder(self : Maze, UpdateInterval : number?) -- A
 		local NeighbourCell = GetCellFromDirection(self, CurrentCell, RandomDirection)
 
 		-- So the algorithm connects the cells together randomly, so if not visited it would connect them by setting the direction to the opposite thus connecting the cells.
-		
+
 		if not self.Cells[NeighbourCell].Visited then
 			self.Cells[NeighbourCell].Direction = OppositeDirection(RandomDirection)
 			SetCellToVisited(self, NeighbourCell)
 		end
 
 		CurrentCell = NeighbourCell
-		
+
 		CurrentIteration += 1
 		if CurrentIteration % 100 == UpdateInterval then
 			UpdateMazeWithCells(self, Cells)
@@ -448,7 +448,7 @@ function MazeGenerator.Wilson(self : Maze, UpdateInterval : number?)
 		local NeighbourCell
 		local CurrentCell = GetRandomNotVisitedCell(self)
 
-		 -- randomerror that happened once, doesn't make sense cause if nonvisted is not empty then currencell should not be nil, might have fixed the error and just kept it incase.
+		-- randomerror that happened once, doesn't make sense cause if nonvisted is not empty then currencell should not be nil, might have fixed the error and just kept it incase.
 		if not CurrentCell then break end
 
 		local walk = { CurrentCell }
@@ -456,7 +456,7 @@ function MazeGenerator.Wilson(self : Maze, UpdateInterval : number?)
 			CurrentCell = walk[#walk] -- CurrentCell is at the end of the walk to continue the walk.
 			local RandomDirection = RandomPossibleDirection(self, CurrentCell, walk)
 			local NeighbourCell = GetCellFromDirection(self, CurrentCell, RandomDirection)
-			
+
 			if not table.find(walk, NeighbourCell) then -- if not in walk then we just add it to the walk and change floor color for visuals.
 				walk[#walk + 1] = NeighbourCell
 				ChangeCellFloorColor(self, NeighbourCell, Color3.new(0, 1, 0))
@@ -512,7 +512,7 @@ function MazeGenerator.Prism(self : Maze) -- Decided this one cause it looks cal
 	local Cells = {} :: {string : Cell}
 	local NonVisitedCells = {} :: {string}
 	local VisitedCells = {} :: {string} -- Visited Cells required this time instead of using not table.find(NonVisitedCells, Cell), also used as a queue before the are actually finalized.
-
+	
 	for x = 0, self.GridSize do
 		for z = 0, self.GridSize do
 			Cells[x..","..z] = {Direction = "I", Visited = false}
@@ -532,9 +532,9 @@ function MazeGenerator.Prism(self : Maze) -- Decided this one cause it looks cal
 	self.MazeFolder:FindFirstChild(CurrentCell).Middle.Transparency = 1 -- Visually show it has been visited
 
 	local FinishedCell = 0
-
-	 -- 2 fail safes, had a counter so once all cells got a direction it stops or either no more visitedcells which are more of a queue in this func.
-	while #VisitedCells < 1 or FinishedCell >= self.GridSize ^ 2 do
+	-- 2 fail safes, had a counter so once all cells got a direction it stops or either no more visitedcells which are more of a queue in this func.
+	while #NonVisitedCells > 1 or FinishedCell >= self.GridSize ^ 2 do
+		if #VisitedCells < 1 then break end
 		local RandomVisitedCell = VisitedCells[math.random(1, #VisitedCells)]
 		local RandomNotVisitedDir = RandomPossibleNotVisitedDirection(self, RandomVisitedCell) -- gets a random direction that hasn't been visited.
 
@@ -588,7 +588,7 @@ local function IsTraversable(self : Maze, Cell : string, Destination : string, D
 
 	--final check if the wall is transparent between both a.k.a their is no wall, then it is traversable, instead of using only this thought it would be less intensive to compare strings first, i could be wrong.
 	if CellModel[Direction].Transparency == 1 and DestinationModel[UnAbbreviateDir(OppositeDirection(AbbreviateDir(Direction)))].Transparency == 1 then return true end 
-	
+
 	return
 end
 
@@ -671,7 +671,7 @@ function MazeGenerator.SolveWithAStar(self : Maze, Start : string, Goal : string
 		CellInfo[Cell] = {Closed = false, PathDistance = 565} -- default
 	end
 
-	 -- initializing the starting cell and final/goal cell.
+	-- initializing the starting cell and final/goal cell.
 	CellInfo[Start] = {Fcost = CalculateHcost(self, Start, Goal), Hcost = CalculateHcost(self, Start, Goal), Gcost = CalculateGcost(self, CellInfo, Start), Closed = false, Start = true}
 	CellInfo[Goal] = {Closed = false, PathDistance = 565, Goal = true}
 	local Current = Start
@@ -686,7 +686,7 @@ function MazeGenerator.SolveWithAStar(self : Maze, Start : string, Goal : string
 			if CellInfo[Coord].Start then continue end
 			if not IsTraversable(self, Current, Coord, Direction) or CellInfo[Coord].Closed then continue end -- if it can't be traversed or is closed we move on.
 
-			 -- if not closed it calculates the values and sets the origin to the current cell else if path is smaller that its old one even though it is closed we recalculate the values.
+			-- if not closed it calculates the values and sets the origin to the current cell else if path is smaller that its old one even though it is closed we recalculate the values.
 			if GetPath(self, CellInfo, Coord).Distance < CellInfo[Coord].PathDistance or not CellInfo[Coord].Closed then
 				CellInfo[Coord].Fcost = CalculateFcost(self, CellInfo, Coord, Goal)
 				CellInfo[Coord].Gcost = CalculateGcost(self, CellInfo, Coord)
